@@ -25,7 +25,7 @@ namespace miniproyecto
             _categoria = categoria;
         }
 
-        // Propiedades
+        // Propiedades 
         public string Codigo
         {
             get { return _codigo; }
