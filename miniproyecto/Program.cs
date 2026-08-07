@@ -1,7 +1,9 @@
-﻿using miniproyecto.MiniProyecto;
+﻿using miniproyecto.dbcontext;
+using miniproyecto.MiniProyecto;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace miniproyecto
 {
@@ -9,8 +11,11 @@ namespace miniproyecto
     {
         static void Main(string[] args)
         {
-            // Cargar los datos guardados en la carpeta "Datos" al iniciar el programa
-            Database.CargarDatos();
+            // Asegura que la base de datos "INVENTARIO_DB" y sus tablas se creen en SQL Server
+            using (var db = new InventarioDbContext())
+            {
+                db.Database.EnsureCreated();
+            }
 
             bool salir = false;
 
@@ -62,25 +67,17 @@ namespace miniproyecto
             Console.Clear();
             Console.WriteLine("=== REGISTRAR NUEVA CATEGORÍA ===");
 
-            Console.Write("Ingrese el ID de la categoría: ");
-            if (!int.TryParse(Console.ReadLine(), out int id))
-            {
-                Console.WriteLine("ID no válido.");
-                Pausar();
-                return;
-            }
-
             Console.Write("Ingrese el Nombre de la categoría: ");
             string nombre = Console.ReadLine();
 
-            // Instancia de Categoría usando el constructor parametrizado
-            Categoria nuevaCategoria = new Categoria(id, nombre);
+            using (var db = new InventarioDbContext())
+            {
+                Categoria nuevaCategoria = new Categoria(nombre);
+                db.Categorias.Add(nuevaCategoria);
+                db.SaveChanges(); // Guarda en SQL Server
+            }
 
-            // Agregar a la lista y guardar en el JSON
-            Database.Categorias.Add(nuevaCategoria);
-            Database.GuardarCategorias();
-
-            Console.WriteLine("\n✔ Categoría guardada exitosamente en JSON.");
+            Console.WriteLine("\n✔ Categoría guardada exitosamente en SQL Server.");
             Pausar();
         }
 
@@ -89,15 +86,20 @@ namespace miniproyecto
             Console.Clear();
             Console.WriteLine("=== LISTA DE CATEGORÍAS ===");
 
-            if (Database.Categorias.Count == 0)
+            using (var db = new InventarioDbContext())
             {
-                Console.WriteLine("No hay categorías registradas.");
-            }
-            else
-            {
-                foreach (var cat in Database.Categorias)
+                var categorias = db.Categorias.ToList();
+
+                if (categorias.Count == 0)
                 {
-                    Console.WriteLine($"ID: {cat.Id} | Nombre: {cat.Nombre}");
+                    Console.WriteLine("No hay categorías registradas.");
+                }
+                else
+                {
+                    foreach (var cat in categorias)
+                    {
+                        Console.WriteLine($"ID: {cat.Id} | Nombre: {cat.Nombre}");
+                    }
                 }
             }
 
@@ -111,51 +113,61 @@ namespace miniproyecto
             Console.Clear();
             Console.WriteLine("=== REGISTRAR NUEVO PRODUCTO ===");
 
-            if (Database.Categorias.Count == 0)
+            using (var db = new InventarioDbContext())
             {
-                Console.WriteLine("⚠ Debe registrar al menos una categoría antes de crear productos.");
-                Pausar();
-                return;
-            }
+                var categorias = db.Categorias.ToList();
 
-            Console.Write("Ingrese el Código del producto: ");
-            string codigo = Console.ReadLine();
+                if (categorias.Count == 0)
+                {
+                    Console.WriteLine("⚠ Debe registrar al menos una categoría antes de crear productos.");
+                    Pausar();
+                    return;
+                }
 
-            Console.Write("Ingrese el Nombre del producto: ");
-            string nombre = Console.ReadLine();
+                Console.Write("Ingrese el Código del producto: ");
+                string codigo = Console.ReadLine();
 
-            Console.Write("Ingrese el Precio: ");
-            if (!double.TryParse(Console.ReadLine(), out double precio))
-            {
-                Console.WriteLine("Precio no válido.");
-                Pausar();
-                return;
-            }
+                Console.Write("Ingrese el Nombre del producto: ");
+                string nombre = Console.ReadLine();
 
-            // Seleccionar categoría existente
-            Console.WriteLine("\nCategorías disponibles:");
-            for (int i = 0; i < Database.Categorias.Count; i++)
-            {
-                Console.WriteLine($"{i + 1}.- {Database.Categorias[i].Nombre}");
-            }
+                Console.Write("Ingrese el Precio: ");
+                if (!double.TryParse(Console.ReadLine(), out double precio))
+                {
+                    Console.WriteLine("Precio no válido.");
+                    Pausar();
+                    return;
+                }
 
-            Console.Write("Seleccione el número de la categoría: ");
-            if (int.TryParse(Console.ReadLine(), out int seleccionCat) && seleccionCat > 0 && seleccionCat <= Database.Categorias.Count)
-            {
-                Categoria categoriaSeleccionada = Database.Categorias[seleccionCat - 1];
+                // Seleccionar categoría existente
+                Console.WriteLine("\nCategorías disponibles:");
+                for (int i = 0; i < categorias.Count; i++)
+                {
+                    Console.WriteLine($"{i + 1}.- {categorias[i].Nombre}");
+                }
 
-                // Instancia de Producto
-                Producto nuevoProducto = new Producto(codigo, nombre, precio, categoriaSeleccionada);
+                Console.Write("Seleccione el número de la categoría: ");
+                if (int.TryParse(Console.ReadLine(), out int seleccionCat) && seleccionCat > 0 && seleccionCat <= categorias.Count)
+                {
+                    Categoria categoriaSeleccionada = categorias[seleccionCat - 1];
 
-                // Agregar a la lista y guardar en el JSON
-                Database.Productos.Add(nuevoProducto);
-                Database.GuardarProductos();
+                    // Instancia de Producto
+                    Producto nuevoProducto = new Producto
+                    {
+                        Codigo = codigo,
+                        Nombre = nombre,
+                        Precio = precio,
+                        CategoriaId = categoriaSeleccionada.Id
+                    };
 
-                Console.WriteLine("\n✔ Producto guardado exitosamente en JSON.");
-            }
-            else
-            {
-                Console.WriteLine("Selección de categoría inválida.");
+                    db.Productos.Add(nuevoProducto);
+                    db.SaveChanges(); // Guarda en SQL Server
+
+                    Console.WriteLine("\n✔ Producto guardado exitosamente en SQL Server.");
+                }
+                else
+                {
+                    Console.WriteLine("Selección de categoría inválida.");
+                }
             }
 
             Pausar();
@@ -166,22 +178,28 @@ namespace miniproyecto
             Console.Clear();
             Console.WriteLine("=== LISTA DE PRODUCTOS ===");
 
-            if (Database.Productos.Count == 0)
+            using (var db = new InventarioDbContext())
             {
-                Console.WriteLine("No hay productos registrados.");
-            }
-            else
-            {
-                foreach (var prod in Database.Productos)
+                // Usamos .Include(p => p.Categoria) para traer los datos de la Categoría asociada desde SQL
+                var productos = db.Productos.Include(p => p.Categoria).ToList();
+
+                if (productos.Count == 0)
                 {
-                    Console.WriteLine($"Código: {prod.Codigo} | Nombre: {prod.Nombre} | Precio: ${prod.Precio} | Categoría: {prod.Categoria.Nombre}");
+                    Console.WriteLine("No hay productos registrados.");
+                }
+                else
+                {
+                    foreach (var prod in productos)
+                    {
+                        string nombreCat = prod.Categoria != null ? prod.Categoria.Nombre : "Sin Categoría";
+                        Console.WriteLine($"ID: {prod.Id} | Código: {prod.Codigo} | Nombre: {prod.Nombre} | Precio: ${prod.Precio} | Categoría: {nombreCat}");
+                    }
                 }
             }
 
             Pausar();
         }
 
-        // Método auxiliar para pausar la pantalla
         static void Pausar()
         {
             Console.WriteLine("\nPresione cualquier tecla para continuar...");

@@ -8,32 +8,22 @@ namespace miniproyecto
     {
         public class Categoria
         {
-            // Atributos privados
-            private int _id;
-            private string _nombre;
+            public int Id { get; set; }
+            public string Nombre { get; set; }
 
             // Constructores
             public Categoria() { }
 
+            public Categoria(string nombre)
+            {
+                Nombre = nombre;
+            }
+
             public Categoria(int id, string nombre)
             {
-                _id = id;
-                _nombre = nombre;
-            }
-
-            // Propiedades
-            public int Id
-            {
-                get { return _id; }
-                set { _id = value; }
-            }
-
-            public string Nombre
-            {
-                get { return _nombre; }
-                set { _nombre = value; }
+                Id = id;
+                Nombre = nombre;
             }
         }
     }
 }
-
